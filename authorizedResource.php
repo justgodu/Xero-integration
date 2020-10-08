@@ -194,9 +194,8 @@
         $result = curl_exec($curl);
         
         curl_close($curl);
-        echo $result. " HMMMM";
-            // $result = $apiInstance->createPaymentService($xeroTenantId, $payment_services);
-            // print_r($result);
+            $result = $apiInstance->createPaymentService($xeroTenantId, $payment_services);
+            print_r($result);
         } catch (Exception $e) {
             echo 'Exception when calling AccountingApi->createPaymentService: ', $e->getMessage(), PHP_EOL;
         }
@@ -222,6 +221,51 @@
         } catch (Exception $e) {
             echo 'Exception when calling AccountingApi->getPaymentServices: ', $e->getMessage(), PHP_EOL;
         }
+    }else if($_GET["action"]==10){
+
+        $contact = new \XeroAPI\XeroPHP\Models\Accounting\Contact;
+        $contact->setContactId("2237351e-0530-4820-8624-cc4428cdf764");
+        $lineItem = new \XeroAPI\XeroPHP\Models\Accounting\LineItem;
+        $lineItem->setDescription("Demo descrtipion")->setQuantity(2)
+        ->setUnitAmount(20.0)
+        ->setAccountCode('090')
+        ->setTaxType("NONE")
+        ->setLineAmount('40');
+        $lineItems =  [];
+        array_push($lineItems, $lineItem);
+        $date = new \DateTime("2020-10-08T22:20:30+01:00");
+        $dueDate = new \DateTime("2019-10-08T22:20:30+01:00");
+        $reference = "Some reference";
+        $status = "DRAFT";
+
+    //     $invoice = array("type" => "ACCREC",
+    //     "contact"=> $contact,
+    //     "lineItems" => $lineItems,
+    //     "date" => $date,
+    //     "dueDate" => $dueDate,
+    //     "reference" => $reference,
+    //     "status" => $status
+    // );
+        
+        // $data = array("type"=> "ACCREC", "contact" =>   ] 
+
+        $invoice = new \XeroAPI\XeroPHP\Models\Accounting\Invoice;
+        $invoice->setType("ACCREC")
+        ->setContact($contact)
+        ->setLineItems($lineItems)
+        ->setDate($date)
+        ->setDueDate($dueDate)
+        ->setReference($reference)
+        ->setStatus($status);
+       
+        // print_r($invoice);
+        $summarize_errors = true;
+        try{
+            $result = $apiInstance->createInvoices($xeroTenantId, $invoice, $summarize_errors);
+            $message = "Invoice has been sent"; 
+        }catch (Exception $e){
+            echo 'Exception when calling AccountingApi->createInvoices: ', $e->getMessage(), PHP_EOL;
+        }
     }
   }
 ?>
@@ -238,6 +282,7 @@
             <!-- <li><a href="authorizedResource.php?action=8">Get Payment method (This is not yet available)</a></li> -->
             <li><a href="authorizedResource.php?action=8">Get Payable</a></li>
             <li><a href="authorizedResource.php?action=9">Get Organisation</a></li>
+            <li><a href="authorizedResource.php?action=10">Add invoice</a></li>
             
         </ul>
         <div>
