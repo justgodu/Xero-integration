@@ -8,8 +8,9 @@
 
   // Storage Classe uses sessions for storing token > extend to your DB of choice
   $storage = new StorageClass();
-  $xeroTenantId = (string)$storage->getSession()['tenant_id'];
 
+    $xeroTenantId = (string)$storage->getSession()['tenant_id'];
+ 
   if ($storage->getHasExpired()) {
     $provider = new \League\OAuth2\Client\Provider\GenericProvider([
       'clientId'                => '07885311897144579D1F0C7570738FB2',
@@ -30,7 +31,7 @@
         $newAccessToken->getExpires(),
         $xeroTenantId,
         $newAccessToken->getRefreshToken(),
-        $newAccessToken->getValues()["id_token"] );
+        $newAccessToken->getValues()["id_token"]);
   }
 
   $config = XeroAPI\XeroPHP\Configuration::getDefaultConfiguration()->setAccessToken( (string)$storage->getSession()['token'] );
@@ -40,184 +41,28 @@
   );
   
   $message = "no API calls";
+  if(isset($_GET['inv']) && isset($_GET['type'])){
+      if($_GET['type'] == "paid")
+      $message = $_GET['inv'] == "success" ? "Successfully Paid" : "Payment Failed";
+      if($_GET['type'] == "voided") 
+      $message = $_GET['inv'] == "success" ? "Successfully Voided" : "Deletion Failed";
+  }
+  if(isset($_GET['invoiceNo']) && isset($_GET['currency']) && isset($_GET['amount']) && isset($_GET['shortCode'])){
+    require_once('invoice.php'); 
+    $xeroInvoice = new XeroInvoice($_GET['invoiceNo'], $_GET['currency'], $_GET['amount'], $_GET['shortCode']);
+    
+}
   if (isset($_GET['action'])) {
     if ($_GET["action"] == 1) {
         // Get Organisation details
         $apiResponse = $apiInstance->getOrganisations($xeroTenantId);
         $message = 'Organisation Name: ' . $apiResponse->getOrganisations()[0]->getName();
-    } else if ($_GET["action"] == 2) {
-        // Create Contact
-        try {
-            $person = new XeroAPI\XeroPHP\Models\Accounting\ContactPerson;
-            $person->setFirstName("John")
-                ->setLastName("Smith")
-                ->setEmailAddress("john.smith@24locks.com")
-                ->setIncludeInEmails(true);
-
-            $arr_persons = [];
-            array_push($arr_persons, $person);
-
-            $contact = new XeroAPI\XeroPHP\Models\Accounting\Contact;
-            $contact->setName('FooBar')
-                ->setFirstName("Foo")
-                ->setLastName("Bar")
-                ->setEmailAddress("ben.bowden@24locks.com")
-                ->setContactPersons($arr_persons);
-            
-            $arr_contacts = [];
-            array_push($arr_contacts, $contact);
-            $contacts = new XeroAPI\XeroPHP\Models\Accounting\Contacts;
-            $contacts->setContacts($arr_contacts);
-
-            $apiResponse = $apiInstance->createContacts($xeroTenantId,$contacts);
-            $message = 'New Contact Name: ' . $apiResponse->getContacts()[0]->getName();
-        } catch (\XeroAPI\XeroPHP\ApiException $e) {
-            $error = AccountingObjectSerializer::deserialize(
-                $e->getResponseBody(),
-                '\XeroAPI\XeroPHP\Models\Accounting\Error',
-                []
-            );
-            $message = "ApiException - " . $error->getElements()[0]["validation_errors"][0]["message"];
-        }
-
-    } else if ($_GET["action"] == 3) {
-        $if_modified_since = new \DateTime("2019-01-02T19:20:30+01:00"); // \DateTime | Only records created or modified since this timestamp will be returned
-        $if_modified_since = null;
-        $where = 'Type=="ACCREC"'; // string
-        $where = null;
-        $order = null; // string
-        $ids = null; // string[] | Filter by a comma-separated list of Invoice Ids.
-        $invoice_numbers = null; // string[] |  Filter by a comma-separated list of Invoice Numbers.
-        $contact_ids = null; // string[] | Filter by a comma-separated list of ContactIDs.
-        $statuses = array("DRAFT", "SUBMITTED");;
-        $page = 1; // int | e.g. page=1 – Up to 100 invoices will be returned in a single API call with line items
-        $include_archived = null; // bool | e.g. includeArchived=true - Contacts with a status of ARCHIVED will be included
-        $created_by_my_app = null; // bool | When set to true you'll only retrieve Invoices created by your app
-        $unitdp = null; // int | e.g. unitdp=4 – You can opt in to use four decimal places for unit amounts
-
-        try {
-            $apiResponse = $apiInstance->getInvoices($xeroTenantId, $if_modified_since, $where, $order, $ids, $invoice_numbers, $contact_ids, $statuses, $page, $include_archived, $created_by_my_app, $unitdp);
-            if (  count($apiResponse->getInvoices()) > 0 ) {
-                $message = 'Total invoices found: ' . count($apiResponse->getInvoices());
-            } else {
-                $message = "No invoices found matching filter criteria";
-            }
-        } catch (Exception $e) {
-            echo 'Exception when calling AccountingApi->getInvoices: ', $e->getMessage(), PHP_EOL;
-        }
-    } else if ($_GET["action"] == 4) {
-        // Create Multiple Contacts
-        try {
-            $contact = new XeroAPI\XeroPHP\Models\Accounting\Contact;
-            $contact->setName('George Jetson')
-                ->setFirstName("George")
-                ->setLastName("Jetson")
-                ->setEmailAddress("george.jetson@aol.com");
-
-            // Add the same contact twice - the first one will succeed, but the
-            // second contact will throw a validation error which we'll catch.
-            $arr_contacts = [];
-            array_push($arr_contacts, $contact);
-            array_push($arr_contacts, $contact);
-            $contacts = new XeroAPI\XeroPHP\Models\Accounting\Contacts;
-            $contacts->setContacts($arr_contacts);
-
-            $apiResponse = $apiInstance->createContacts($xeroTenantId,$contacts,false);
-            $message = 'First contacts created: ' . $apiResponse->getContacts()[0]->getName();
-
-            if ($apiResponse->getContacts()[1]->getHasValidationErrors()) {
-                $message = $message . '<br> Second contact validation error : ' . $apiResponse->getContacts()[1]->getValidationErrors()[0]["message"];
-            }
-
-        } catch (\XeroAPI\XeroPHP\ApiException $e) {
-            $error = AccountingObjectSerializer::deserialize(
-                $e->getResponseBody(),
-                '\XeroAPI\XeroPHP\Models\Accounting\Error',
-                []
-            );
-            $message = "ApiException - " . $error->getElements()[0]["validation_errors"][0]["message"];
-        }
-    } else if ($_GET["action"] == 5) {
-
-        $if_modified_since = new \DateTime("2019-01-02T19:20:30+01:00"); // \DateTime | Only records created or modified since this timestamp will be returned
-        $where = null;
-        $order = null; // string
-        $ids = null; // string[] | Filter by a comma-separated list of Invoice Ids.
-        $page = 1; // int | e.g. page=1 – Up to 100 invoices will be returned in a single API call with line items
-        $include_archived = null; // bool | e.g. includeArchived=true - Contacts with a status of ARCHIVED will be included
-   
-        try {
-            $apiResponse = $apiInstance->getContacts($xeroTenantId, $if_modified_since, $where, $order, $ids, $page, $include_archived);
-            if (  count($apiResponse->getContacts()) > 0 ) {
-                $message = 'Total contacts found: ' . count($apiResponse->getContacts());
-            } else {
-                $message = "No contacts found matching filter criteria";
-            }
-        } catch (Exception $e) {
-            echo 'Exception when calling AccountingApi->getContacts: ', $e->getMessage(), PHP_EOL;
-        }
-    } else if ($_GET["action"] == 6) {
-
-        $jwt = new XeroAPI\XeroPHP\JWTClaims();
-        $jwt->setTokenId((string)$storage->getIdToken() );
-        // Set access token in order to get authentication event id
-        $jwt->setTokenAccess( (string)$storage->getAccessToken() );
-        $jwt->decode();
-
-        echo("sub:" . $jwt->getSub() . "<br>");
-        echo("sid:" . $jwt->getSid() . "<br>");
-        echo("iss:" . $jwt->getIss() . "<br>");
-        echo("exp:" . $jwt->getExp() . "<br>");
-        echo("given name:" . $jwt->getGivenName() . "<br>");
-        echo("family name:" . $jwt->getFamilyName() . "<br>");
-        echo("email:" . $jwt->getEmail() . "<br>");
-        echo("user id:" . $jwt->getXeroUserId() . "<br>");
-        echo("username:" . $jwt->getPreferredUsername() . "<br>");
-        echo("session id:" . $jwt->getGlobalSessionId() . "<br>");
-        echo("authentication_event_id:" . $jwt->getAuthenticationEventId() . "<br>");
-
-    }else if($_GET["action"] == 7){
-   
-        $payment_services = array("PaymentServiceName" => "DemoPayment", "PaymentServiceUrl"=>"https://expodel.ge/", "PayNowText" => "Pay demo now");
-        // echo $xeroTenantId . '</br>';
-        try { $curl = curl_init();
-        
-        $data = array(
-            "PaymentServiceName" => "DemoPayment",
-            "PaymentServiceUrl" => "https://expodel.ge/",
-            "PayNowText" => "Pay now demo"
-        );       
-        $url = "https://api.xero.com/api.xro/2.0/PaymentServices" .http_build_query($data);
-        curl_setopt($curl, CURLOPT_PUT, $url);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-
-        $result = curl_exec($curl);
-        
-        curl_close($curl);
-            $result = $apiInstance->createPaymentService($xeroTenantId, $payment_services);
-            print_r($result);
-        } catch (Exception $e) {
-            echo 'Exception when calling AccountingApi->createPaymentService: ', $e->getMessage(), PHP_EOL;
-        }
-    }else if($_GET["action"]==8){
-        $where = 'EnablePaymentsToAccount==true';
-
-        try {
-            $apiResponse = $apiInstance->getAccounts($xeroTenantId,null,$where);
-            $message = 'Payables: ';
-             foreach($apiResponse->getAccounts() as $acc){
-                 $message = $message . $acc->getName() . '</br>';
-             }
-        } catch (Exception $e) {
-            echo 'Exception when calling AccountingApi->getPaymentServices: ', $e->getMessage(), PHP_EOL;
-        }
-
-    }else if($_GET["action"]==9){
+  
         $where = 'EnablePaymentsToAccount==true';
 
         try {
             $apiResponse = $apiInstance->getOrganisations($xeroTenantId);
-            $message = 'Orgamosatom: ' . $apiResponse->getOrganisations()[0]->getShortcode(); 
+            $message = 'Organisation : ' . $apiResponse->getOrganisations()[0]->getShortcode(); 
         } catch (Exception $e) {
             echo 'Exception when calling AccountingApi->getPaymentServices: ', $e->getMessage(), PHP_EOL;
         }
@@ -226,9 +71,10 @@
         $contact = new \XeroAPI\XeroPHP\Models\Accounting\Contact;
         $contact->setContactId("2237351e-0530-4820-8624-cc4428cdf764");
         $lineItem = new \XeroAPI\XeroPHP\Models\Accounting\LineItem;
-        $lineItem->setDescription("Demo descrtipion")->setQuantity(2)
+        $invoice = new \XeroAPI\XeroPHP\Models\Accounting\Invoice;
+        $lineItem->setDescription("New Demo invoice")->setQuantity(2)
         ->setUnitAmount(20.0)
-        ->setAccountCode('090')
+        ->setAccountCode('020')
         ->setTaxType("NONE")
         ->setLineAmount('40');
         $lineItems =  [];
@@ -236,27 +82,19 @@
         $date = new \DateTime("2020-10-08T22:20:30+01:00");
         $dueDate = new \DateTime("2019-10-08T22:20:30+01:00");
         $reference = "Some reference";
-        $status = "DRAFT";
+        $status = $invoice->getStatusAllowableValues()[0];
 
-    //     $invoice = array("type" => "ACCREC",
-    //     "contact"=> $contact,
-    //     "lineItems" => $lineItems,
-    //     "date" => $date,
-    //     "dueDate" => $dueDate,
-    //     "reference" => $reference,
-    //     "status" => $status
-    // );
+ 
+
         
-        // $data = array("type"=> "ACCREC", "contact" =>   ] 
-
-        $invoice = new \XeroAPI\XeroPHP\Models\Accounting\Invoice;
         $invoice->setType("ACCREC")
         ->setContact($contact)
         ->setLineItems($lineItems)
         ->setDate($date)
         ->setDueDate($dueDate)
         ->setReference($reference)
-        ->setStatus($status);
+        ->setStatus($status)
+        ->setCurrencyCode("KES");
        
         // print_r($invoice);
         $summarize_errors = true;
@@ -265,6 +103,16 @@
             $message = "Invoice has been sent"; 
         }catch (Exception $e){
             echo 'Exception when calling AccountingApi->createInvoices: ', $e->getMessage(), PHP_EOL;
+            print_r($e->getResponseBody());
+        }
+    }else if($_GET['action'] == 11){
+        $invoiceNumber = "INV-0038";
+
+        try{
+            $result = $apiInstance->getInvoice($xeroTenantId, $invoiceNumber);
+            print_r($result);
+        }catch(Exception $e){
+            echo 'Exception when calling AccountingApi->getInvoice: ', $e->getMessage(), PHP_EOL;
         }
     }
   }
@@ -272,17 +120,15 @@
 <html>
     <body>
         <ul>
-            <li><a href="authorizedResource.php?action=1">Get Organisation Name</a></li>
-            <li><a href="authorizedResource.php?action=2">Create one Contact</a></li>
-            <li><a href="authorizedResource.php?action=3">Get Invoice with Filters</a></li>
-            <li><a href="authorizedResource.php?action=4">Create multiple contacts and summarizeErrors</a></li>
-            <li><a href="authorizedResource.php?action=5">Get Contact with Filters</a></li>
-            <li><a href="authorizedResource.php?action=6">Get JWT Claims</a></li>
-            <!-- <li><a href="authorizedResource.php?action=7">Create Payment service (This is not yet available)</a></li> -->
-            <!-- <li><a href="authorizedResource.php?action=8">Get Payment method (This is not yet available)</a></li> -->
-            <li><a href="authorizedResource.php?action=8">Get Payable</a></li>
-            <li><a href="authorizedResource.php?action=9">Get Organisation</a></li>
+            
+            <?php if(isset($xeroInvoice)){ ?>
+            <li><a href="change-invoice-status.php?invid=<?php echo $xeroInvoice->getID()?>&status=paid">Pay Invoice</a></li>
+            <li><a href="change-invoice-status.php?invid=<?php echo $xeroInvoice->getID()?>&status=voided">Void invoice</a></li>
+            <?php }else{?>
+                <li><a href="authorizedResource.php?action=1">Get Organisation Name</a></li>
             <li><a href="authorizedResource.php?action=10">Add invoice</a></li>
+            <li><a href="authorizedResource.php?action=11">Get invoice</a></li>
+            <?php }?>
             
         </ul>
         <div>

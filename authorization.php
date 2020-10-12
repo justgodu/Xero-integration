@@ -30,7 +30,8 @@
   // Save the state generated for you and store it to the session.
   // For security, on callback we compare the saved state with the one returned to ensure they match.
   $_SESSION['oauth2state'] = $provider->getState();
-
+echo $authorizationUrl;
+print_r($_SESSION);
   // Redirect the user to the authorization URL.
   header('Location: ' . $authorizationUrl);
   exit();

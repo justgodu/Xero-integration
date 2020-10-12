@@ -1,3 +1,14 @@
+<?php
+require_once('storage.php');
+
+// Storage Classe uses sessions for storing token > extend to your DB of choice
+$storage = new StorageClass();
+
+if($storage->getSession() !== null){
+    header("Location: authorizedResource.php");
+}
+?>
+
 <html>
 	<head>
 		<title>Xero demo</title>
