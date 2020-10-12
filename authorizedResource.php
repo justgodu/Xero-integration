@@ -62,7 +62,7 @@
 
         try {
             $apiResponse = $apiInstance->getOrganisations($xeroTenantId);
-            $message = 'Organisation : ' . $apiResponse->getOrganisations()[0]->getShortcode(); 
+            $message = 'Organisation : ' . $apiResponse->getOrganisations()[0]->getName(); 
         } catch (Exception $e) {
             echo 'Exception when calling AccountingApi->getPaymentServices: ', $e->getMessage(), PHP_EOL;
         }
