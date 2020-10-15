@@ -41,48 +41,35 @@
   );
   
   $message = "no API calls";
-  if(isset($_GET['inv']) && isset($_GET['type'])){
-      if($_GET['type'] == "paid")
-      $message = $_GET['inv'] == "success" ? "Successfully Paid" : "Payment Failed";
-      if($_GET['type'] == "voided") 
-      $message = $_GET['inv'] == "success" ? "Successfully Voided" : "Deletion Failed";
-  }
+//   if(isset($_GET['inv']) && isset($_GET['type'])){
+//       if($_GET['type'] == "paid")
+//       $message = $_GET['inv'] == "success" ? "Successfully Paid" : "Payment Failed";
+//       if($_GET['type'] == "voided") 
+//       $message = $_GET['inv'] == "success" ? "Successfully Voided" : "Deletion Failed";
+//   }
   if(isset($_GET['invoiceNo']) && isset($_GET['currency']) && isset($_GET['amount']) && isset($_GET['shortCode'])){
     require_once('invoice.php'); 
     $xeroInvoice = new XeroInvoice($_GET['invoiceNo'], $_GET['currency'], $_GET['amount'], $_GET['shortCode']);
     
 }
   if (isset($_GET['action'])) {
-    if ($_GET["action"] == 1) {
-        // Get Organisation details
-        $apiResponse = $apiInstance->getOrganisations($xeroTenantId);
-        $message = 'Organisation Name: ' . $apiResponse->getOrganisations()[0]->getName();
-  
-        $where = 'EnablePaymentsToAccount==true';
-
-        try {
-            $apiResponse = $apiInstance->getOrganisations($xeroTenantId);
-            $message = 'Organisation : ' . $apiResponse->getOrganisations()[0]->getName(); 
-        } catch (Exception $e) {
-            echo 'Exception when calling AccountingApi->getPaymentServices: ', $e->getMessage(), PHP_EOL;
-        }
-    }else if($_GET["action"]==10){
+    if($_GET["action"]==10){
 
         $contact = new \XeroAPI\XeroPHP\Models\Accounting\Contact;
-        $contact->setContactId("2237351e-0530-4820-8624-cc4428cdf764");
+        $contact->setContactId("2237351e-0530-4820-8624-cc4428cdf764"); //ID of xero contact
         $lineItem = new \XeroAPI\XeroPHP\Models\Accounting\LineItem;
         $invoice = new \XeroAPI\XeroPHP\Models\Accounting\Invoice;
-        $lineItem->setDescription("New Demo invoice")->setQuantity(2)
-        ->setUnitAmount(20.0)
-        ->setAccountCode('020')
+        $lineItem->setDescription("New Demo Invoice")->setQuantity(1)
+        ->setUnitAmount(1.0)
+        ->setAccountCode('200')//Xero account id
         ->setTaxType("NONE")
-        ->setLineAmount('40');
+        ->setLineAmount('1');
         $lineItems =  [];
         array_push($lineItems, $lineItem);
         $date = new \DateTime("2020-10-08T22:20:30+01:00");
         $dueDate = new \DateTime("2019-10-08T22:20:30+01:00");
         $reference = "Some reference";
-        $status = $invoice->getStatusAllowableValues()[0];
+        $status = $invoice->getStatusAllowableValues()[3];// Authorized status
 
  
 
@@ -95,25 +82,23 @@
         ->setReference($reference)
         ->setStatus($status)
         ->setCurrencyCode("KES");
-       
-        // print_r($invoice);
+        
+        
+        $request_empty =  new \XeroAPI\XeroPHP\Models\Accounting\RequestEmpty;
+        
+        
         $summarize_errors = true;
         try{
-            $result = $apiInstance->createInvoices($xeroTenantId, $invoice, $summarize_errors);
-            $message = "Invoice has been sent"; 
+            $invoice = $apiInstance->createInvoices($xeroTenantId, $invoice, $summarize_errors);
+            $invoice_id = $invoice[0]->getInvoiceId();
+            
+            $apiInstance->emailInvoice($xeroTenantId, $invoice_id, $request_empty);
+            $message = "Please check you email"; 
         }catch (Exception $e){
             echo 'Exception when calling AccountingApi->createInvoices: ', $e->getMessage(), PHP_EOL;
             print_r($e->getResponseBody());
         }
-    }else if($_GET['action'] == 11){
-        $invoiceNumber = "INV-0038";
 
-        try{
-            $result = $apiInstance->getInvoice($xeroTenantId, $invoiceNumber);
-            print_r($result);
-        }catch(Exception $e){
-            echo 'Exception when calling AccountingApi->getInvoice: ', $e->getMessage(), PHP_EOL;
-        }
     }
   }
 ?>
@@ -121,13 +106,17 @@
     <body>
         <ul>
             
-            <?php if(isset($xeroInvoice)){ ?>
-            <li><a href="change-invoice-status.php?invid=<?php echo $xeroInvoice->getID()?>&status=paid">Pay Invoice</a></li>
-            <li><a href="change-invoice-status.php?invid=<?php echo $xeroInvoice->getID()?>&status=voided">Void invoice</a></li>
+            <?php if(isset($xeroInvoice)){ 
+                    $fname = "demo";
+                    $lname = "demo";
+                    $email = "demo@demo.com";
+                ?>
+                <li><a href="pesapal-iframe.php?invoiceNo=<?php echo $xeroInvoice->getID()?>&fname=<?php echo $fname ?>&lname=<?php echo $fname ?>&email=<?php echo $email ?>">Pay Invoice</a></li>
+                <li><a href="change-invoice-status.php?invid=<?php echo $xeroInvoice->getID()?>&status=voided">Void Invoice</a></li>
             <?php }else{?>
-                <li><a href="authorizedResource.php?action=1">Get Organisation Name</a></li>
-            <li><a href="authorizedResource.php?action=10">Add invoice</a></li>
-            <li><a href="authorizedResource.php?action=11">Get invoice</a></li>
+                <!-- <li><a href="authorizedResource.php?action=1">Get Organisation Name</a></li> -->
+                <li><a href="authorizedResource.php?action=10">Generate invoice and pay</a></li>
+            
             <?php }?>
             
         </ul>
